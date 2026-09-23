@@ -15,6 +15,18 @@ are intentionally excluded from Git history.
 > language in v0.2.1 has completed native-speaker review. Do not use it as the
 > sole basis for blocking, attribution or automated enforcement.
 
+## What the project does
+
+The project creates and validates labelled synthetic messages for developing
+and testing scam-detection systems. It models scam families, observable action
+anchors, benign and negated contexts, evasive spelling, conversation stages,
+language metadata and leakage-resistant dataset splits.
+
+It does **not** currently accept an arbitrary live message and calculate a scam
+probability. It is the offline dataset and validation foundation for such a
+checker. See [Features and analysis logic](docs/FEATURES_AND_ANALYSIS_LOGIC.md)
+for the exact implemented workflow and current boundaries.
+
 ## Highlights
 
 - Fully offline, Python standard-library-only generation and validation
@@ -38,6 +50,7 @@ are intentionally excluded from Git history.
 | `docs/DATASET_CARD.md` | Intended use, exclusions and limitations |
 | `docs/DATA_DICTIONARY.md` | Record-field reference |
 | `docs/ARCHITECTURE.md` | Data flow and trust boundaries |
+| `docs/FEATURES_AND_ANALYSIS_LOGIC.md` | Features, label rules and validation logic |
 | `docs/REPRODUCIBILITY.md` | Rebuild and verification procedure |
 | `PUBLIC_RELEASE_REPORT.md` | Public security and release report |
 
@@ -74,6 +87,26 @@ The generator writes gzip-compressed JSON Lines shards plus a schema,
 taxonomy, language registry, provenance record, preview, quality report and
 hash manifest. Generation is transactional: an incomplete build does not
 replace a previously valid output directory.
+
+## Analysis logic at a glance
+
+Each synthetic message is built from a scam scenario, language seed or curated
+anchor, structural variant, channel, lure and requested action. The label is
+then assigned from the observable content—not merely from the generating
+scenario:
+
+| Message form | Outcome | Family exposed? |
+|---|---|---:|
+| Scam or adversarial scam with an action request | `identified` | Yes |
+| Conversation before an action request | `undetermined` | No |
+| Conversation containing the action request | `identified` | Yes |
+| Benign service notice with explicit negation | `none` | No |
+| Awareness/training hard negative | `none` | No |
+
+`scenario_family` records the scenario used to construct a research example.
+`scam_family` is populated only when the message itself contains sufficient
+observable anchors. This distinction prevents benign warnings or early-stage
+conversation messages from being presented as confirmed scam patterns.
 
 ## Safety and privacy
 
