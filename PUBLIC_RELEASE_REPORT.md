@@ -2,7 +2,7 @@
 
 Release date: 2026-09-23  
 Project: NexVision ScamText Global  
-Repository: `NexvisionLab/scamtext-global`
+Repository: `NexvisionLab/NexVision-Scam-Text-Global`
 
 ## Release decision
 
