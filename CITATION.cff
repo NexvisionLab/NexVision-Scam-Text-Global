@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this research dataset, cite the software and its version."
+title: "NexVision ScamText Global"
+type: software
+version: 0.2.1
+date-released: 2026-09-23
+authors:
+  - name: "NexVision Lab"
+license: PolyForm-Noncommercial-1.0.0
+repository-code: "https://github.com/NexvisionLab/scamtext-global"
+
