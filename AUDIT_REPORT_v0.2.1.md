@@ -16,6 +16,9 @@ or robustness.
 
 ## Fixed findings
 
+Line numbers in the Location column refer to the source as it was when the finding
+was made, before these fixes; they no longer match the current files.
+
 | Severity | Classification | Location | Evidence and impact | Action |
 |---|---|---|---|---|
 | High | Confirmed defect | `src/generate_dataset.py:253-265`, `languages()` | Seven seed-only languages were also marked tier A, affecting 210,000 records in v0.2.0. | Tier A is now derived strictly from membership in the 18-language anchor pack; all 32 other languages are tier B. |

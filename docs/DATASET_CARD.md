@@ -26,6 +26,14 @@
 5. Many non-English records contain international brand or English technical
    tokens, reflecting common code-switching but not purely monolingual usage.
 6. Conversation records are short staged simulations, not victim transcripts.
+7. Each class carries fixed template cues: hard negatives contain "Training
+   example", benign notices state that no payment is requested, and scam records
+   include a defanged link and a reference code. A model trained on this data can
+   separate the classes from those cues alone, so high in-distribution accuracy
+   says nothing about real-world performance.
+8. Some English fragments are ungrammatical as generated (for example "within
+   before 18:00", "within today") because deadlines are inserted into a fixed
+   "within {deadline}" template.
 
 ## Required validation before deployment
 

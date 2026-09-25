@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import tempfile
 from collections import Counter
 from pathlib import Path
@@ -532,7 +533,9 @@ def finalize_shard(handle, temporary: Path, destination: Path, expected_rows: in
     """Close, fsync, verify and atomically install one compressed shard."""
     handle.flush()
     handle.close()
-    descriptor = os.open(temporary, os.O_RDONLY)
+    # Open read-write: on Windows, fsync (FlushFileBuffers) fails with EBADF on
+    # a read-only descriptor, while POSIX accepts either.
+    descriptor = os.open(temporary, os.O_RDWR | getattr(os, "O_BINARY", 0))
     try:
         os.fsync(descriptor)
     finally:
@@ -688,7 +691,7 @@ def _generate_release(output: Path, records: int, shard_size: int) -> dict:
     for path in [output / "taxonomy.json", output / "language_registry.json", output / "schema.json",
                  output / "provenance.json", output / "quality_report.json", output / "curated_anchor_packs.json",
                  output / "preview.jsonl", *shard_paths]:
-        files.append({"path": str(path.relative_to(output)), "bytes": path.stat().st_size, "sha256": file_sha256(path)})
+        files.append({"path": path.relative_to(output).as_posix(), "bytes": path.stat().st_size, "sha256": file_sha256(path)})
     manifest = {
         "dataset": "NexVision ScamText Global", "version": VERSION,
         "records": global_index, "taxonomy_families": len(tax), "macro_categories": 12,
@@ -767,6 +770,14 @@ def generate(output: Path, records: int, shard_size: int) -> dict:
             shutil.rmtree(staging)
 
 
+SPLIT_BLOCK = len(LANGUAGE_SEEDS) * len(FAMILY_SPECS)  # records per structural variant
+
+
+def empty_splits(manifest: dict) -> list[str]:
+    """Splits with no records in a build (variants 16-19 only start late in the run)."""
+    return [name for name in ("train", "development", "test") if not manifest["split_counts"].get(name)]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
@@ -777,6 +788,11 @@ def main() -> None:
         parser.error("record and shard sizes must be positive")
     manifest = generate(args.output, args.records, args.shard_size)
     print(json.dumps({k: manifest[k] for k in ("records", "taxonomy_families", "languages", "scripts", "label_counts", "split_counts")}, indent=2))
+    missing = empty_splits(manifest)
+    if missing:
+        print(f"warning: no {' or '.join(missing)} records in this build; the held-out splits only "
+              f"begin after {16 * SPLIT_BLOCK:,} (development) and {18 * SPLIT_BLOCK:,} (test) records, "
+              f"so use --records above {18 * SPLIT_BLOCK:,} for a build that includes them.", file=sys.stderr)
 
 
 if __name__ == "__main__":

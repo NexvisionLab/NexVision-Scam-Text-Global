@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -43,6 +44,29 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(set(record_schema["required"]), set(row))
         self.assertEqual(set(record_schema["properties"]), set(row))
         self.assertIs(record_schema["additionalProperties"], False)
+
+    def test_data_dictionary_matches_schema(self):
+        # Regression: the dictionary once documented ten fields that do not
+        # exist (id, locale_hint, urgency, ...) and omitted eight that do.
+        text = (ROOT / "docs" / "DATA_DICTIONARY.md").read_text(encoding="utf-8")
+        documented = set(re.findall(r"^\| [A-Za-z]+ \| `([a-z_]+)` \|", text, re.M))
+        self.assertEqual(documented, set(generator.schema()["properties"]))
+
+    def test_small_builds_report_missing_heldout_splits(self):
+        self.assertEqual(generator.empty_splits({"split_counts": {"train": 100}}), ["development", "test"])
+        full = {"split_counts": {"train": 8, "development": 1, "test": 1}}
+        self.assertEqual(generator.empty_splits(full), [])
+
+    def test_manifest_paths_are_portable(self):
+        # Regression: str(Path) wrote backslashes on Windows and the validator
+        # (correctly) rejected them, so nothing validated there.
+        temp, path, manifest = self.generate(600)
+        try:
+            for entry in manifest["files"]:
+                self.assertNotIn("\\", entry["path"])
+            self.assertEqual(validator.validate(path)["status"], "passed")
+        finally:
+            temp.cleanup()
 
     def test_generation_is_deterministic(self):
         a, pa, ma = self.generate(1000)
@@ -216,7 +240,11 @@ class DatasetTests(unittest.TestCase):
             target = root / "target"
             target.mkdir()
             link = root / "output-link"
-            link.symlink_to(target, target_is_directory=True)
+            try:
+                link.symlink_to(target, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                # Windows requires an elevated privilege or Developer Mode.
+                self.skipTest(f"symbolic links are not permitted here: {exc}")
             with self.assertRaisesRegex(ValueError, "symbolic link"):
                 generator.generate(link, 100, 25)
             self.assertEqual(list(target.iterdir()), [])

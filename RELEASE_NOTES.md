@@ -1,5 +1,25 @@
 # Release notes
 
+## Unreleased - Windows compatibility and documentation fixes
+
+Generated data is unchanged for the same arguments; only manifest path
+separators differ on Windows, where they were previously wrong.
+
+- Fixes `OSError: [Errno 9] Bad file descriptor` on Windows: shard `fsync` now
+  opens the file read-write (Windows rejects a read-only descriptor).
+- Writes manifest paths with POSIX separators and compares shard inventories the
+  same way. On Windows the manifest previously contained backslashes, which the
+  validator correctly rejected, so no build could validate there.
+- The symbolic-link test skips when the OS does not permit creating links.
+- Adds a warning when a build is too small to contain development or test
+  records (they only begin after 48,000 and 54,000 records).
+- Rewrites `docs/DATA_DICTIONARY.md` to match the real 36-field schema (it had
+  documented ten fields that do not exist) and adds a test that keeps them in sync.
+- Corrects the repository name in `CITATION.cff` and the release report, and the
+  reproduction command in `QA_v0.2.1.md` (the generator refuses to overwrite a
+  non-empty unmanaged directory such as `data/`).
+- Adds a cross-platform GitHub Actions workflow (Linux, Windows, macOS).
+
 ## 0.2.1 — integrity-audited maintenance release
 
 - Corrects language quality tier A to the 18 languages that actually contain
