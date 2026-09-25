@@ -1,0 +1,35 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile
+        run: python -m compileall -q src tests
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Generate and validate a small release
+        run: |
+          python src/generate_dataset.py --output build/ci --records 15000 --shard-size 5000
+          python src/validate_dataset.py build/ci

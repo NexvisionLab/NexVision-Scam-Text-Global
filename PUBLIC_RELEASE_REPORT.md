@@ -2,7 +2,7 @@
 
 Release date: 2026-09-23  
 Project: NexVision ScamText Global  
-Repository: `NexvisionLab/NexVision-Scam-Text-Global`
+Repository: `NexvisionLab/Global-Scam-Text-and-Smishing-Threat-Intelligence-Engine`
 
 ## Release decision
 
@@ -36,7 +36,7 @@ generated files are authenticated by size and SHA-256 digest.
 | Check | Result |
 |---|---:|
 | Python compilation | Passed |
-| Regression tests | 26 / 26 passed |
+| Regression tests | 29 / 29 passed on Linux; 28 passed and 1 skipped on Windows (no symlink privilege) |
 | Representative 15,000-record generation | Passed |
 | Representative streaming validation | Passed |
 | Full 1,500,000-record reference validation | Passed |

@@ -139,7 +139,7 @@ def validate(root: Path) -> dict:
         missing = sorted(REQUIRED_METADATA - file_names)
         raise ValueError(f"manifest omits required metadata files: {missing}")
     declared_shards = {name for name in file_names if name.startswith("shards/") and name.endswith(".jsonl.gz")}
-    actual_shards = {str(path.relative_to(root)) for path in (root / "shards").glob("*.jsonl.gz")}
+    actual_shards = {path.relative_to(root).as_posix() for path in (root / "shards").glob("*.jsonl.gz")}
     if not declared_shards or declared_shards != actual_shards:
         raise ValueError("manifest shard inventory does not match the release directory")
 

@@ -23,7 +23,7 @@ Release status: passed for controlled research use; operational validation requi
 | Template split leakage | 0 |
 | Near-duplicate split leakage | 0 |
 | Normalized-text split leakage | 0 |
-| Regression tests | 26 passed |
+| Regression tests | 29 passed (1 skipped where symbolic links are not permitted) |
 | Python bytecode compilation | Passed |
 | Dependency consistency | Passed; standard library only |
 
@@ -66,8 +66,8 @@ Release status: passed for controlled research use; operational validation requi
 ## Reproduction commands
 
 ```bash
-python src/generate_dataset.py --output data --records 1500000 --shard-size 100000
-python src/validate_dataset.py data
+python src/generate_dataset.py --output build/v0.2.1 --records 1500000 --shard-size 100000
+python src/validate_dataset.py build/v0.2.1
 python -m unittest discover -s tests -v
 ```
 

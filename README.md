@@ -37,7 +37,8 @@ for the exact implemented workflow and current boundaries.
 - Benign-context, negation and job/task-scam counterexamples
 - Defanged reserved `.invalid` URLs and synthetic placeholders only
 - Transactional output replacement and strict streaming validation
-- 26 regression tests covering previously discovered defects and safe output handling
+- 29 regression tests covering previously discovered defects and safe output handling,
+  run in CI on Linux, Windows and macOS
 
 ## Repository contents
 
@@ -75,6 +76,11 @@ Generate and validate a smaller local research build:
 python src/generate_dataset.py --output build/demo --records 15000 --shard-size 5000
 python src/validate_dataset.py build/demo
 ```
+
+The held-out splits only begin late in a build (development after 48,000
+records, test after 54,000), so a 15,000-record demo is entirely `train` and the
+generator prints a warning saying so. Use more than 54,000 records when you need
+development and test data.
 
 Generate the complete v0.2.1 release:
 
@@ -119,7 +125,8 @@ message, identifier or victim data. See [SECURITY.md](SECURITY.md).
 ## Validation status
 
 The v0.2.1 reference build passed full streaming validation over 1,500,000
-records, all 26 regression tests and offline security/privacy scans. It has no
+records, all 29 regression tests (one skips where the OS forbids symbolic links)
+and offline security/privacy scans. It has no
 known runtime dependency vulnerabilities because generation and validation use
 only the supported Python standard library. Remaining research limitations are
 listed in [PUBLIC_RELEASE_REPORT.md](PUBLIC_RELEASE_REPORT.md).
