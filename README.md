@@ -1,5 +1,7 @@
 # NexVision ScamText Global
 
+[![tests](https://github.com/NexvisionLab/Global-Scam-Text-and-Smishing-Threat-Intelligence-Engine/actions/workflows/tests.yml/badge.svg)](https://github.com/NexvisionLab/Global-Scam-Text-and-Smishing-Threat-Intelligence-Engine/actions/workflows/tests.yml)
+
 NexVision ScamText Global is an offline, deterministic research dataset and
 toolkit for multilingual scam-message taxonomy, robustness testing and detector
 development. It covers SMS, WhatsApp-style messages, direct messages and short
@@ -113,6 +115,108 @@ scenario:
 `scam_family` is populated only when the message itself contains sufficient
 observable anchors. This distinction prevents benign warnings or early-stage
 conversation messages from being presented as confirmed scam patterns.
+
+## How it works
+
+### Generation pipeline
+
+`src/generate_dataset.py` builds a release in an isolated staging directory and
+only swaps it into place once every step has succeeded, so a failed run never
+damages a previous good release.
+
+```mermaid
+flowchart TD
+    A(["--output, --records, --shard-size"]) --> B["guard the output path<br/>no filesystem root, no symlink,<br/>no non-empty directory it does not manage"]
+    B --> C["load curated_anchor_packs.json<br/>check structure, licence, review status, 18 languages"]
+    C --> D["build taxonomy (60 families)<br/>and language registry (50 languages)<br/>cardinality checks fail closed"]
+    D --> D2["write taxonomy, language registry,<br/>schema and provenance"]
+    D2 --> E["allocate the class mix exactly<br/>(largest-remainder, never negative)"]
+    E --> F
+
+    subgraph loop ["for every record"]
+        F["pick language and family by position<br/>plus channel, brand, payment, lure,<br/>amount, deadline, URL path"] --> G["structural variant 0-19 sets the split and the<br/>campaign, template and near-duplicate IDs"]
+        G --> H["choose the pretext:<br/>curated anchor (tier A) or generic (tier B)"]
+        H --> I["render the message for its class<br/>adversarial records get one evasion"]
+        I --> J["derive the normalized-text cluster ID from the text,<br/>check no cluster crosses a split, write the record"]
+    end
+
+    J --> K["gzip shards: fsync, re-read,<br/>count rows, then rename into place"]
+    K --> L["write quality report,<br/>install the first-500 preview"]
+    L --> M["manifest.json: counts plus<br/>size and SHA-256 of every file"]
+    M --> N(["atomic swap of staging directory<br/>into the requested output"])
+```
+
+Class mix of the 1,500,000-record reference release:
+
+```mermaid
+pie showData title Records by class
+    "scam" : 600000
+    "benign" : 350000
+    "hard_negative" : 250000
+    "adversarial_scam" : 200000
+    "conversation_turn" : 100000
+```
+
+### How a record gets its label
+
+The class the generator is building decides the outcome, and a family is named
+only when the finished message itself contains enough evidence to name it.
+
+```mermaid
+flowchart TD
+    R["record class"] --> S{"which class?"}
+    S -- "scam" --> A1["identified<br/>scam_family = the family<br/>action and payment present"]
+    S -- "adversarial_scam" --> A2["identified, same as scam<br/>plus one evasion:<br/>leetspeak, zero-width, split tokens,<br/>percent-encoding, mixed script,<br/>repeated punctuation"]
+    S -- "hard_negative" --> B1["none<br/>scam_family = null<br/>scenario_family kept<br/>no action requested"]
+    S -- "benign" --> B2["none<br/>both families null<br/>notice states no payment is requested"]
+    S -- "conversation_turn" --> C{"conversation stage"}
+    C -- "contact, trust building,<br/>pretext, pressure" --> C1["undetermined<br/>scam_family = null"]
+    C -- "action request" --> C2["identified<br/>scam_family = the family"]
+```
+
+### Splits and leakage control
+
+Every language-and-family campaign cycles through 20 structural variants, and
+the variant alone decides the split, so related records can never straddle the
+train/test boundary.
+
+```mermaid
+flowchart LR
+    V["structural variant 0-19"] --> T["0-15<br/>train (80%)"]
+    V --> D["16-17<br/>development (10%)"]
+    V --> X["18-19<br/>test (10%)"]
+```
+
+Four identifiers are tracked and each must map to exactly one split:
+`campaign_id`, `template_cluster_id`, `near_duplicate_cluster_id` and
+`normalized_text_cluster_id` (the text with URLs, numbers and reference codes
+masked). The generator checks this while writing, and the validator rebuilds the
+mapping independently.
+
+### Validation pipeline
+
+`src/validate_dataset.py` does not trust the manifest. It streams every record
+and stops at the first inconsistency.
+
+```mermaid
+flowchart TD
+    A(["release directory"]) --> B["taxonomy has 60 families,<br/>registry has 50 languages"]
+    B --> C["every manifest path is safe and canonical<br/>size and SHA-256 match"]
+    C --> D["required metadata files listed,<br/>shard inventory equals what is on disk"]
+    D --> E["cross-check versions, schema,<br/>language quality tiers vs anchor pack"]
+
+    subgraph stream ["for every record in every shard"]
+        F["exact fields, ID formats,<br/>unique ID and unique text"] --> G["no live http(s) URL,<br/>defanged host must be .invalid"]
+        G --> H["label / outcome / family / action<br/>must be consistent"]
+        H --> I["recompute normalized-text cluster<br/>and expected split"]
+        I --> J["no cluster seen in two splits"]
+    end
+
+    E --> F
+    J --> K["preview equals first 500 records,<br/>manifest counts and quality report match"]
+    K --> L["provenance: synthetic only,<br/>no real messages, no PII, no API calls"]
+    L --> M(["status: passed"])
+```
 
 ## Safety and privacy
 
